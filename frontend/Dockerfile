@@ -1,26 +1,23 @@
 # Build stage
 FROM node:18-alpine as build
 
+ARG REACT_APP_API_URL
+ENV REACT_APP_API_URL=$REACT_APP_API_URL
+
 WORKDIR /app
 
-# Копируем package.json и устанавливаем зависимости
 COPY package*.json ./
 RUN npm install
 
-# Копируем исходный код
 COPY . .
-
-# Собираем приложение
 RUN npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Копируем собранное приложение
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Копируем конфигурацию nginx
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN rm /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 
