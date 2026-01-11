@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateQR, getPaymentLink } from '../api';
 import './PaymentPage.css';
@@ -9,6 +9,80 @@ const PaymentPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Таймеры
+  const [qrTimeLeft, setQrTimeLeft] = useState(null);
+  const [linkTimeLeft, setLinkTimeLeft] = useState(null);
+
+  // Длительность сессии (5 минут)
+  const SESSION_DURATION = 5 * 60; // 300 секунд
+
+  // Форматирование времени mm:ss
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Автообновление QR
+  const autoRefreshQR = useCallback(async () => {
+    console.log('🔄 Автообновление QR-кода...');
+    try {
+      const data = await generateQR();
+      if (data.success) {
+        setQrData(data.qr_code);
+        setQrTimeLeft(SESSION_DURATION);
+      }
+    } catch (err) {
+      console.error('Ошибка автообновления QR:', err);
+    }
+  }, []);
+
+  // Автообновление ссылки
+  const autoRefreshLink = useCallback(async () => {
+    console.log('🔄 Автообновление ссылки...');
+    try {
+      const data = await getPaymentLink();
+      if (data.success) {
+        setPaymentLink(data);
+        setLinkTimeLeft(SESSION_DURATION);
+      }
+    } catch (err) {
+      console.error('Ошибка автообновления ссылки:', err);
+    }
+  }, []);
+
+  // Таймер для QR кода
+  useEffect(() => {
+    if (qrTimeLeft === null || qrTimeLeft < 0) return;
+
+    if (qrTimeLeft === 0) {
+      autoRefreshQR();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setQrTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [qrTimeLeft, autoRefreshQR]);
+
+  // Таймер для ссылки
+  useEffect(() => {
+    if (linkTimeLeft === null || linkTimeLeft < 0) return;
+
+    if (linkTimeLeft === 0) {
+      autoRefreshLink();
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setLinkTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [linkTimeLeft, autoRefreshLink]);
+
   const handleGenerateQR = async () => {
     setLoading(true);
     setError(null);
@@ -16,6 +90,7 @@ const PaymentPage = () => {
       const data = await generateQR();
       if (data.success) {
         setQrData(data.qr_code);
+        setQrTimeLeft(SESSION_DURATION);
       } else {
         setError('Ошибка при генерации QR-кода');
       }
@@ -34,6 +109,7 @@ const PaymentPage = () => {
       const data = await getPaymentLink();
       if (data.success) {
         setPaymentLink(data);
+        setLinkTimeLeft(SESSION_DURATION);
       } else {
         setError('Ошибка при создании ссылки');
       }
@@ -68,11 +144,10 @@ const PaymentPage = () => {
                 QR-код и ссылка на оплату содержат <strong>уникальный идентификатор сессии</strong>.
               </p>
               <p>
-                После успешной оплаты <strong>вернитесь на эту страницу</strong> и сгенерируйте
-                новый QR-код или ссылку для следующего платежа.
+                Каждые 5 минут система <strong>автоматически обновляет</strong> платежную ссылку для безопасности.
               </p>
               <p>
-                ⚠️ Не используйте повторно старые QR-коды и ссылки!
+                ⚠️ Следите за таймером обратного отсчета!
               </p>
             </div>
           </div>
@@ -98,6 +173,22 @@ const PaymentPage = () => {
 
             {qrData && (
               <div className="qr-display">
+                {/* ТАЙМЕР QR */}
+                {qrTimeLeft !== null && (
+                  <div className={`timer-display ${qrTimeLeft < 60 ? 'timer-warning' : ''}`}>
+                    <div className="timer-icon">⏱️</div>
+                    <div className="timer-content">
+                      <div className="timer-label">Обновление через:</div>
+                      <div className="timer-value">{formatTime(qrTimeLeft)}</div>
+                      {qrTimeLeft < 60 && (
+                        <div className="timer-warning-text">
+                          ⚠️ QR-код скоро обновится!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="qr-content">
                   <QRCodeSVG
                     value={qrData.url}
@@ -140,6 +231,22 @@ const PaymentPage = () => {
 
             {paymentLink && (
               <div className="link-display">
+                {/* ТАЙМЕР ССЫЛКИ */}
+                {linkTimeLeft !== null && (
+                  <div className={`timer-display ${linkTimeLeft < 60 ? 'timer-warning' : ''}`}>
+                    <div className="timer-icon">⏱️</div>
+                    <div className="timer-content">
+                      <div className="timer-label">Обновление через:</div>
+                      <div className="timer-value">{formatTime(linkTimeLeft)}</div>
+                      {linkTimeLeft < 60 && (
+                        <div className="timer-warning-text">
+                          ⚠️ Ссылка скоро обновится!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="link-input-group">
                   <input
                     type="text"
@@ -186,12 +293,12 @@ const PaymentPage = () => {
         <div className="faq-section">
           <h3>❓ Частые вопросы</h3>
           <details className="faq-item">
-            <summary>Как долго действует QR-код?</summary>
-            <p>Каждый QR-код содержит уникальный идентификатор сессии для отслеживания платежа. Рекомендуется генерировать новый QR-код для каждого платежа.</p>
+            <summary>Зачем автоматически обновляется QR-код?</summary>
+            <p>Для безопасности система генерирует новый уникальный идентификатор каждые 5 минут. Это защищает ваши платежи.</p>
           </details>
           <details className="faq-item">
-            <summary>Что будет, если я использую старый QR-код?</summary>
-            <p>Старый QR-код продолжит работать, но может привести к путанице при отслеживании платежей. Всегда генерируйте новый QR-код перед оплатой.</p>
+            <summary>Что будет, если время истекло во время оплаты?</summary>
+            <p>Не переживайте! Система автоматически сгенерирует новый QR-код. Просто повторите попытку оплаты.</p>
           </details>
           <details className="faq-item">
             <summary>В какие часы принимаются платежи?</summary>

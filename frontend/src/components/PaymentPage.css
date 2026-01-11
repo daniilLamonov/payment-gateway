@@ -365,3 +365,100 @@
     width: 100%;
   }
 }
+
+/* ========== ТАЙМЕР ========== */
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 20px 25px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 16px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+}
+
+.timer-display.timer-warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  animation: pulse-timer 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-timer {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 8px 20px rgba(245, 87, 108, 0.4);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 12px 30px rgba(245, 87, 108, 0.6);
+  }
+}
+
+.timer-icon {
+  font-size: 40px;
+  animation: rotate-timer 3s linear infinite;
+}
+
+@keyframes rotate-timer {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.timer-content {
+  flex: 1;
+  color: white;
+}
+
+.timer-label {
+  font-size: 15px;
+  opacity: 0.95;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.timer-value {
+  font-size: 42px;
+  font-weight: 800;
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 3px;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.timer-warning-text {
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  animation: blink-timer 1s ease-in-out infinite;
+}
+
+@keyframes blink-timer {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .timer-display {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 18px 20px;
+  }
+
+  .timer-value {
+    font-size: 36px;
+  }
+
+  .timer-icon {
+    font-size: 36px;
+  }
+}
+
+@media (max-width: 480px) {
+  .timer-value {
+    font-size: 32px;
+    letter-spacing: 2px;
+  }
+}
+
