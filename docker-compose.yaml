@@ -1,37 +1,61 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:17
+    container_name: payment-postgres-local
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - postgres_data_local:/var/lib/postgresql/data
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: payment-backend
+    container_name: payment-backend-local
     restart: always
     env_file:
       - .env
     environment:
-      - DB_HOST=shared-postgres
+      - DB_HOST=postgres
       - DB_PORT=${DB_PORT}
       - DB_NAME=${DB_NAME}
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
-      - FRONTEND_URL=${FRONTEND_URL}
-      - PROTOCOL=${PROTOCOL}
-      - DEBUG=${DEBUG}
-      - DOMAIN=${DOMAIN}
+      - FRONTEND_URL=http://localhost:3000
+      - PROTOCOL=http
+      - DEBUG=True
+      - DOMAIN=localhost
     networks:
-      - shared-network
       - payment-network
     ports:
       - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
 
-  nginx:
+  frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://${SERVER_IP}:8000
-    container_name: payment-nginx
+        - REACT_APP_API_URL=http://localhost:8000
+    container_name: payment-frontend-local
     restart: always
     ports:
       - "3000:80"
@@ -42,8 +66,9 @@ services:
     depends_on:
       - backend
 
+volumes:
+  postgres_data_local:
+
 networks:
-  shared-network:
-    external: true
   payment-network:
     driver: bridge
