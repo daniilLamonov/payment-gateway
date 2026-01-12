@@ -2,28 +2,24 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateQR, getPaymentLink } from '../api';
 import './PaymentPage.css';
+import sbpIcon from '../assets/SBP.png';
 
 const PaymentPage = () => {
+  const SESSION_DURATION = 5 * 60; // 300 секунд
+
   const [qrData, setQrData] = useState(null);
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Таймеры
   const [qrTimeLeft, setQrTimeLeft] = useState(null);
   const [linkTimeLeft, setLinkTimeLeft] = useState(null);
 
-  // Длительность сессии (5 минут)
-  const SESSION_DURATION = 5 * 60; // 300 секунд
-
-  // Форматирование времени mm:ss
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Автообновление QR
   const autoRefreshQR = useCallback(async () => {
     console.log('🔄 Автообновление QR-кода...');
     try {
@@ -35,9 +31,8 @@ const PaymentPage = () => {
     } catch (err) {
       console.error('Ошибка автообновления QR:', err);
     }
-  }, []);
+  }, [SESSION_DURATION]);
 
-  // Автообновление ссылки
   const autoRefreshLink = useCallback(async () => {
     console.log('🔄 Автообновление ссылки...');
     try {
@@ -49,9 +44,37 @@ const PaymentPage = () => {
     } catch (err) {
       console.error('Ошибка автообновления ссылки:', err);
     }
-  }, []);
+  }, [SESSION_DURATION]);
 
-  // Таймер для QR кода
+  useEffect(() => {
+    const fetchPaymentLink = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getPaymentLink();
+        if (data.success) {
+          setPaymentLink(data);
+          setLinkTimeLeft(SESSION_DURATION);
+        } else {
+          setError('Ошибка при создании ссылки');
+        }
+      } catch (err) {
+        setError('Ошибка при создании ссылки');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPaymentLink();
+  }, [SESSION_DURATION]);
+
+  const handleOpenPayment = () => {
+    if (paymentLink?.link) {
+      window.open(paymentLink.link, '_blank');
+    }
+  };
+
   useEffect(() => {
     if (qrTimeLeft === null || qrTimeLeft < 0) return;
 
@@ -67,7 +90,6 @@ const PaymentPage = () => {
     return () => clearInterval(timer);
   }, [qrTimeLeft, autoRefreshQR]);
 
-  // Таймер для ссылки
   useEffect(() => {
     if (linkTimeLeft === null || linkTimeLeft < 0) return;
 
@@ -102,30 +124,6 @@ const PaymentPage = () => {
     }
   };
 
-  const handleGetPaymentLink = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await getPaymentLink();
-      if (data.success) {
-        setPaymentLink(data);
-        setLinkTimeLeft(SESSION_DURATION);
-      } else {
-        setError('Ошибка при создании ссылки');
-      }
-    } catch (err) {
-      setError('Ошибка при создании ссылки');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    alert('Ссылка скопирована в буфер обмена');
-  };
-
   return (
     <div className="payment-page">
       <div className="payment-container">
@@ -141,13 +139,7 @@ const PaymentPage = () => {
             <div className="warning-content">
               <h3>ВАЖНО!</h3>
               <p>
-                QR-код и ссылка на оплату содержат <strong>уникальный идентификатор сессии</strong>.
-              </p>
-              <p>
-                Каждые 5 минут система <strong>автоматически обновляет</strong> платежную ссылку для безопасности.
-              </p>
-              <p>
-                ⚠️ Следите за таймером обратного отсчета!
+                <strong>QR-код СБП действителен 5 минут, после придется сгенерировать новый QR-код на оплату по СБП</strong>.
               </p>
             </div>
           </div>
@@ -155,7 +147,6 @@ const PaymentPage = () => {
 
         {/* ВАРИАНТЫ ОПЛАТЫ */}
         <div className="payment-options">
-
           {/* ВАРИАНТ 1: QR КОД */}
           <div className="option qr-option">
             <div className="option-header">
@@ -168,15 +159,20 @@ const PaymentPage = () => {
               onClick={handleGenerateQR}
               disabled={loading}
             >
-              {loading ? '⏳ Генерирую QR-код...' : '📱 Сгенерировать QR-код'}
+              {loading ? (
+                'Генерирую QR-код...'
+              ) : (
+                <>
+                  <img src={sbpIcon} alt="" style={{ width: '16px', height: '16px', marginRight: '8px' }} />
+                  QR-код СБП
+                </>
+              )}
             </button>
 
             {qrData && (
               <div className="qr-display">
-                {/* ТАЙМЕР QR */}
                 {qrTimeLeft !== null && (
                   <div className={`timer-display ${qrTimeLeft < 60 ? 'timer-warning' : ''}`}>
-                    <div className="timer-icon">⏱️</div>
                     <div className="timer-content">
                       <div className="timer-label">Обновление через:</div>
                       <div className="timer-value">{formatTime(qrTimeLeft)}</div>
@@ -196,9 +192,6 @@ const PaymentPage = () => {
                     level="H"
                     includeMargin={true}
                   />
-                  <p className="qr-session">
-                    ID сессии: <code>{qrData.session_id.substring(0, 8)}...</code>
-                  </p>
                   <p className="qr-url">
                     <code>{qrData.url}</code>
                   </p>
@@ -218,64 +211,16 @@ const PaymentPage = () => {
           <div className="option link-option">
             <div className="option-header">
               <h2>Способ 2️⃣</h2>
-              <p className="option-subtitle">Использовать ссылку для оплаты</p>
+              <p className="option-subtitle">Оплатить в приложении банка</p>
             </div>
 
             <button
               className="btn btn-primary btn-large"
-              onClick={handleGetPaymentLink}
-              disabled={loading}
+              onClick={handleOpenPayment}
+              disabled={loading || !paymentLink}
             >
-              {loading ? '⏳ Создаю ссылку...' : '🔗 Получить ссылку на оплату'}
+              {loading ? '⏳ Загрузка...' : '→ Перейти к оплате'}
             </button>
-
-            {paymentLink && (
-              <div className="link-display">
-                {/* ТАЙМЕР ССЫЛКИ */}
-                {linkTimeLeft !== null && (
-                  <div className={`timer-display ${linkTimeLeft < 60 ? 'timer-warning' : ''}`}>
-                    <div className="timer-icon">⏱️</div>
-                    <div className="timer-content">
-                      <div className="timer-label">Обновление через:</div>
-                      <div className="timer-value">{formatTime(linkTimeLeft)}</div>
-                      {linkTimeLeft < 60 && (
-                        <div className="timer-warning-text">
-                          ⚠️ Ссылка скоро обновится!
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="link-input-group">
-                  <input
-                    type="text"
-                    value={paymentLink.link}
-                    readOnly
-                    className="link-input"
-                    onClick={(e) => e.target.select()}
-                  />
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => copyToClipboard(paymentLink.link)}
-                    title="Скопировать ссылку"
-                  >
-                    📋 Копировать
-                  </button>
-                </div>
-
-                <button
-                  className="btn btn-success btn-large"
-                  onClick={() => window.open(paymentLink.link, '_blank')}
-                >
-                  → Перейти к оплате
-                </button>
-
-                <p className="link-session">
-                  ID сессии: <code>{paymentLink.session_id.substring(0, 8)}...</code>
-                </p>
-              </div>
-            )}
           </div>
         </div>
 

@@ -82,7 +82,7 @@ async def payment_gateway_tracked(db: Session = Depends(get_db)):
         is_working, message = utils.is_working_hours(db, config.MOSCOW_TZ)
 
         if not is_working:
-            return await render_not_working_hours_page(db, message)
+            return await render_not_working_hours_page(db)
 
         # 2️⃣ Получение актуальной ссылки
         dynamic_url = crud.get_active_dynamic_url(db)

@@ -6,7 +6,7 @@ from fastapi.responses import HTMLResponse
 from ... import crud, config
 
 
-async def render_not_working_hours_page(db: Session, message: str):
+async def render_not_working_hours_page(db: Session):
     """Страница вне рабочего времени"""
 
     now = datetime.now(config.MOSCOW_TZ)
@@ -74,12 +74,8 @@ async def render_not_working_hours_page(db: Session, message: str):
             <div class="icon">⏰</div>
             <h1>Платежная система закрыта</h1>
 
-            <div class="message">
-                {message}
-            </div>
-
             <div class="info-box">
-                <strong>Часы работы сегодня:</strong>
+                <strong>Часы работы:</strong>
                 <p>{hours_text} (МСК)</p>
             </div>
 
