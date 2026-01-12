@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateQR, getPaymentLink } from '../api';
 import './PaymentPage.css';
-import sbpIcon from '../assets/sbp.png';
+import sbpIcon from '../assets/SBP.png';
 
 const PaymentPage = () => {
   const SESSION_DURATION = 5 * 60;
