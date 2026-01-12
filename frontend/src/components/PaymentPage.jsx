@@ -2,23 +2,41 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { generateQR, getPaymentLink } from '../api';
 import './PaymentPage.css';
-import sbpIcon from '../assets/SBP.png';
+import sbpIcon from '../assets/sbp.png';
 
 const PaymentPage = () => {
-  const SESSION_DURATION = 5 * 60; // 300 секунд
+  const SESSION_DURATION = 5 * 60;
+  const PAGE_SESSION_DURATION = 5 * 60;
 
+  const [sessionId] = useState(() => {
+    return Math.floor(Math.random() * 90000000000000) + 10000000000000;
+  });
+
+  const [pageTimeLeft, setPageTimeLeft] = useState(PAGE_SESSION_DURATION);
   const [qrData, setQrData] = useState(null);
   const [paymentLink, setPaymentLink] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [qrTimeLeft, setQrTimeLeft] = useState(null);
   const [linkTimeLeft, setLinkTimeLeft] = useState(null);
+  const [showQR, setShowQR] = useState(false);
 
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  useEffect(() => {
+    if (pageTimeLeft === 0) {
+      window.location.reload();
+      return;
+    }
+    const timer = setInterval(() => {
+      setPageTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [pageTimeLeft]);
 
   const autoRefreshQR = useCallback(async () => {
     console.log('🔄 Автообновление QR-кода...');
@@ -65,7 +83,6 @@ const PaymentPage = () => {
         setLoading(false);
       }
     };
-
     fetchPaymentLink();
   }, [SESSION_DURATION]);
 
@@ -77,31 +94,25 @@ const PaymentPage = () => {
 
   useEffect(() => {
     if (qrTimeLeft === null || qrTimeLeft < 0) return;
-
     if (qrTimeLeft === 0) {
       autoRefreshQR();
       return;
     }
-
     const timer = setInterval(() => {
       setQrTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
     return () => clearInterval(timer);
   }, [qrTimeLeft, autoRefreshQR]);
 
   useEffect(() => {
     if (linkTimeLeft === null || linkTimeLeft < 0) return;
-
     if (linkTimeLeft === 0) {
       autoRefreshLink();
       return;
     }
-
     const timer = setInterval(() => {
       setLinkTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
     }, 1000);
-
     return () => clearInterval(timer);
   }, [linkTimeLeft, autoRefreshLink]);
 
@@ -113,6 +124,7 @@ const PaymentPage = () => {
       if (data.success) {
         setQrData(data.qr_code);
         setQrTimeLeft(SESSION_DURATION);
+        setShowQR(true);
       } else {
         setError('Ошибка при генерации QR-кода');
       }
@@ -128,107 +140,80 @@ const PaymentPage = () => {
     <div className="payment-page">
       <div className="payment-container">
         <div className="header">
-          <h1>💳 Оплата через СБП</h1>
-          <p className="subtitle">Система быстрых платежей</p>
+          <h1>Оплата через СБП</h1>
+          <p className="subtitle">Сессия: {sessionId}</p>
+          <p className="subtitle">Завершите платеж в течении: {formatTime(pageTimeLeft)}</p>
         </div>
 
-        {/* ПРЕДУПРЕЖДЕНИЕ */}
-        <div className="warning-section">
-          <div className="warning-box">
-            <div className="warning-icon">⚠️</div>
-            <div className="warning-content">
-              <h3>ВАЖНО!</h3>
-              <p>
-                <strong>QR-код СБП действителен 5 минут, после придется сгенерировать новый QR-код на оплату по СБП</strong>.
-              </p>
-            </div>
+        {/* ОСНОВНОЙ СПОСОБ ОПЛАТЫ - ПО ЦЕНТРУ */}
+        <div className="primary-payment">
+          <div className="primary-header">
+            <h2>Оплатить в приложении банка</h2>
+            <p className="primary-subtitle">Быстрый и удобный способ</p>
           </div>
-        </div>
 
-        {/* ВАРИАНТЫ ОПЛАТЫ */}
-        <div className="payment-options">
-          {/* ВАРИАНТ 1: QR КОД */}
-          <div className="option qr-option">
-            <div className="option-header">
-              <h2>Способ 1️⃣</h2>
-              <p className="option-subtitle">Отсканировать QR-код</p>
-            </div>
-
-            <button
-              className="btn btn-primary btn-large"
-              onClick={handleGenerateQR}
-              disabled={loading}
-            >
-              {loading ? (
-                'Генерирую QR-код...'
-              ) : (
-                <>
-                  <img src={sbpIcon} alt="" style={{ width: '16px', height: '16px', marginRight: '8px' }} />
-                  QR-код СБП
-                </>
-              )}
-            </button>
-
-            {qrData && (
-              <div className="qr-display">
-                {qrTimeLeft !== null && (
-                  <div className={`timer-display ${qrTimeLeft < 60 ? 'timer-warning' : ''}`}>
-                    <div className="timer-content">
-                      <div className="timer-label">Обновление через:</div>
-                      <div className="timer-value">{formatTime(qrTimeLeft)}</div>
-                      {qrTimeLeft < 60 && (
-                        <div className="timer-warning-text">
-                          ⚠️ QR-код скоро обновится!
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="qr-content">
-                  <QRCodeSVG
-                    value={qrData.url}
-                    size={280}
-                    level="H"
-                    includeMargin={true}
-                  />
-                  <p className="qr-url">
-                    <code>{qrData.url}</code>
-                  </p>
-                </div>
-
-                <p className="qr-instruction">
-                  👆 Откройте камеру телефона и отсканируйте этот QR-код
-                </p>
-              </div>
+          <button
+            className="btn btn-primary btn-large btn-featured"
+            onClick={handleOpenPayment}
+            disabled={loading || !paymentLink}
+          >
+            {loading ? '⏳ Загрузка...' : (
+              <>
+                <img src={sbpIcon} alt="" className="btn-icon" />
+                Выбрать банк
+              </>
             )}
-          </div>
-
-          {/* РАЗДЕЛИТЕЛЬ */}
-          <div className="divider">или</div>
-
-          {/* ВАРИАНТ 2: ССЫЛКА */}
-          <div className="option link-option">
-            <div className="option-header">
-              <h2>Способ 2️⃣</h2>
-              <p className="option-subtitle">Оплатить в приложении банка</p>
-            </div>
-
-            <button
-              className="btn btn-primary btn-large"
-              onClick={handleOpenPayment}
-              disabled={loading || !paymentLink}
-            >
-              {loading ? '⏳ Загрузка...' : '→ Перейти к оплате'}
-            </button>
-          </div>
+          </button>
         </div>
+
+        {/* РАЗДЕЛИТЕЛЬ */}
+        <div className="divider">или</div>
+
+        {/* АЛЬТЕРНАТИВНЫЙ СПОСОБ - QR КОД */}
+        <div className="secondary-payment">
+          <button
+            className="btn btn-secondary btn-small"
+            onClick={handleGenerateQR}
+            disabled={loading}
+          >
+            {showQR ? 'Обновить QR-код' : 'Показать QR-код для сканирования'}
+          </button>
+
+          {qrData && showQR && (
+            <div className="qr-display">
+              <div className="qr-content">
+                <QRCodeSVG
+                  value={qrData.url}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                />
+                <p className="qr-instruction">
+                  Отсканируйте камерой телефона
+                </p>
+                {/* ПРЕДУПРЕЖДЕНИЕ */}
+                <div className="warning-section">
+                    <div className="warning-box">
+                        <div className="warning-icon">⚠️</div>
+                        <div className="warning-content">
+                            <h3>ВАЖНО!</h3>
+                            <p>
+                                <strong>QR-код СБП действителен 5 минут, после придется сгенерировать новый QR-код на оплату по СБП</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
 
         {/* ОШИБКА */}
         {error && (
           <div className="error-section">
             <div className="error-box">
-              <span className="error-icon">❌</span>
+              <span className="error-icon">⚠️</span>
               <p>{error}</p>
             </div>
           </div>
@@ -236,14 +221,14 @@ const PaymentPage = () => {
 
         {/* FAQ */}
         <div className="faq-section">
-          <h3>❓ Частые вопросы</h3>
+          <h3>Частые вопросы</h3>
           <details className="faq-item">
-            <summary>Зачем автоматически обновляется QR-код?</summary>
-            <p>Для безопасности система генерирует новый уникальный идентификатор каждые 5 минут. Это защищает ваши платежи.</p>
+            <summary>Как оплатить через приложение банка?</summary>
+            <p>Нажмите "Выбрать банк", система откроет список доступных банков для оплаты через СБП.</p>
           </details>
           <details className="faq-item">
-            <summary>Что будет, если время истекло во время оплаты?</summary>
-            <p>Не переживайте! Система автоматически сгенерирует новый QR-код. Просто повторите попытку оплаты.</p>
+            <summary>Зачем нужен QR-код?</summary>
+            <p>QR-код — альтернативный способ оплаты. Отсканируйте его камерой телефона, если не хотите использовать кнопку выбора банка.</p>
           </details>
           <details className="faq-item">
             <summary>В какие часы принимаются платежи?</summary>
