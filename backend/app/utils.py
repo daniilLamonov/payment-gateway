@@ -6,90 +6,9 @@ import base64
 from typing import Optional
 from sqlalchemy.orm import Session
 from . import crud
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
-
-
-def build_payment_url_with_amount(base_url: str, amount: int, parameter_name: str = "sum") -> str:
-    """
-    Построить URL для оплаты с указанием суммы.
-
-    Args:
-        base_url: Базовая ссылка СБП (без параметра суммы)
-        amount: Сумма в копейках (1 рубль = 100 копеек)
-        parameter_name: Название параметра суммы ('sum', 'amount', и т.д.)
-
-    Returns:
-        URL с добавленным параметром суммы
-
-    Example:
-        >>> build_payment_url_with_amount(
-        ...     "https://qr.nspk.ru/ABC123?type=01&bank=100000000261&crc=FDD5",
-        ...     50000,  # 500 рублей
-        ...     "sum"
-        ... )
-        "https://qr.nspk.ru/ABC123?type=01&bank=100000000261&sum=50000&crc=FDD5"
-    """
-
-    # Парсим URL
-    parsed = urlparse(base_url)
-    query_params = parse_qs(parsed.query, keep_blank_values=True)
-
-    # Добавляем или обновляем параметр суммы
-    query_params[parameter_name] = [str(amount)]
-
-    # Собираем URL обратно
-    new_query = urlencode(query_params, doseq=True)
-    new_url = urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path,
-        parsed.params,
-        new_query,
-        parsed.fragment
-    ))
-
-    return new_url
-
-
-def rubles_to_kopecks(rubles: float) -> int:
-    """
-    Конвертировать рубли в копейки.
-
-    Args:
-        rubles: Сумма в рублях (может быть с копейками, например 123.45)
-
-    Returns:
-        Сумма в копейках (целое число)
-
-    Example:
-        >>> rubles_to_kopecks(500.50)
-        50050
-    """
-    return int(round(rubles * 100))
-
-
-def kopecks_to_rubles(kopecks: int) -> float:
-    """
-    Конвертировать копейки в рубли.
-
-    Args:
-        kopecks: Сумма в копейках
-
-    Returns:
-        Сумма в рублях
-
-    Example:
-        >>> kopecks_to_rubles(50050)
-        500.50
-    """
-    return kopecks / 100
-
 
 def is_working_hours(db: Session, moscow_tz) -> tuple[bool, Optional[str]]:
-    """
-    Проверить, находимся ли мы в рабочее время.
-    Возвращает (is_working, message)
-    """
+
     now = datetime.now(moscow_tz)
 
     working_config = crud.get_working_hours_by_day(db, now.weekday())

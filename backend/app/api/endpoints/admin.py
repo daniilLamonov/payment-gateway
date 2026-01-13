@@ -11,7 +11,7 @@ from ...auth import get_current_admin
 from ...config import settings
 from ...database import get_db
 
-router = APIRouter(prefix="/api/admin", tags=["admin"])
+router = APIRouter(prefix="/admin", tags=["admin"])
 
 @router.put("/working-hours", response_model=APIResponse)
 async def update_working_hours(

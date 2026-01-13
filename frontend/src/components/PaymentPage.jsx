@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { generateQR, getPaymentLink } from '../api';
+import { generateQR, getPaymentLink, checkPaymentStatus } from '../api';
 import './PaymentPage.css';
 import sbpIcon from '../assets/SBP.png';
 
 const PaymentPage = () => {
+  const navigate = useNavigate();
   const SESSION_DURATION = 5 * 60;
   const PAGE_SESSION_DURATION = 5 * 60;
 
@@ -38,9 +40,30 @@ const PaymentPage = () => {
     return () => clearInterval(timer);
   }, [pageTimeLeft]);
 
+  const checkSystemAvailability = useCallback(async () => {
+    try {
+      const data = await checkPaymentStatus();
+
+      if (!data.available) {
+        navigate(`/payment-error?type=${data.reason}&message=${encodeURIComponent(data.message)}`);
+        return false;
+      }
+
+      return true;
+    } catch (err) {
+      console.error('❌ Ошибка проверки статуса:', err);
+      return true;
+    }
+  }, [navigate]);
+
   const autoRefreshQR = useCallback(async () => {
     console.log('🔄 Автообновление QR-кода...');
     try {
+      const isAvailable = await checkSystemAvailability();
+      if (!isAvailable) {
+        return;
+      }
+
       const data = await generateQR();
       if (data.success) {
         setQrData(data.qr_code);
@@ -49,11 +72,16 @@ const PaymentPage = () => {
     } catch (err) {
       console.error('Ошибка автообновления QR:', err);
     }
-  }, [SESSION_DURATION]);
+  }, [SESSION_DURATION, checkSystemAvailability]);
 
   const autoRefreshLink = useCallback(async () => {
     console.log('🔄 Автообновление ссылки...');
     try {
+      const isAvailable = await checkSystemAvailability();
+      if (!isAvailable) {
+        return;
+      }
+
       const data = await getPaymentLink();
       if (data.success) {
         setPaymentLink(data);
@@ -62,13 +90,19 @@ const PaymentPage = () => {
     } catch (err) {
       console.error('Ошибка автообновления ссылки:', err);
     }
-  }, [SESSION_DURATION]);
+  }, [SESSION_DURATION, checkSystemAvailability]);
 
   useEffect(() => {
     const fetchPaymentLink = async () => {
       setLoading(true);
       setError(null);
       try {
+        const isAvailable = await checkSystemAvailability();
+        if (!isAvailable) {
+          setLoading(false);
+          return;
+        }
+
         const data = await getPaymentLink();
         if (data.success) {
           setPaymentLink(data);
@@ -84,11 +118,42 @@ const PaymentPage = () => {
       }
     };
     fetchPaymentLink();
-  }, [SESSION_DURATION]);
+  }, [SESSION_DURATION, checkSystemAvailability]);
 
-  const handleOpenPayment = () => {
+  const handleOpenPayment = async () => {
+    const isAvailable = await checkSystemAvailability();
+    if (!isAvailable) {
+      return;
+    }
+
     if (paymentLink?.link) {
       window.open(paymentLink.link, '_blank');
+    }
+  };
+
+  const handleGenerateQR = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const isAvailable = await checkSystemAvailability();
+      if (!isAvailable) {
+        setLoading(false);
+        return;
+      }
+
+      const data = await generateQR();
+      if (data.success) {
+        setQrData(data.qr_code);
+        setQrTimeLeft(SESSION_DURATION);
+        setShowQR(true);
+      } else {
+        setError('Ошибка при генерации QR-кода');
+      }
+    } catch (err) {
+      setError('Ошибка при генерации QR-кода');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -116,26 +181,6 @@ const PaymentPage = () => {
     return () => clearInterval(timer);
   }, [linkTimeLeft, autoRefreshLink]);
 
-  const handleGenerateQR = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await generateQR();
-      if (data.success) {
-        setQrData(data.qr_code);
-        setQrTimeLeft(SESSION_DURATION);
-        setShowQR(true);
-      } else {
-        setError('Ошибка при генерации QR-кода');
-      }
-    } catch (err) {
-      setError('Ошибка при генерации QR-кода');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="payment-page">
       <div className="payment-container">
@@ -145,7 +190,6 @@ const PaymentPage = () => {
           <p className="subtitle">Завершите платеж в течении: {formatTime(pageTimeLeft)}</p>
         </div>
 
-        {/* ОСНОВНОЙ СПОСОБ ОПЛАТЫ - ПО ЦЕНТРУ */}
         <div className="primary-payment">
           <div className="primary-header">
             <h2>Оплатить в приложении банка</h2>
@@ -166,10 +210,8 @@ const PaymentPage = () => {
           </button>
         </div>
 
-        {/* РАЗДЕЛИТЕЛЬ */}
         <div className="divider">или</div>
 
-        {/* АЛЬТЕРНАТИВНЫЙ СПОСОБ - QR КОД */}
         <div className="secondary-payment">
           <button
             className="btn btn-secondary btn-small"
@@ -191,25 +233,22 @@ const PaymentPage = () => {
                 <p className="qr-instruction">
                   Отсканируйте камерой телефона
                 </p>
-                {/* ПРЕДУПРЕЖДЕНИЕ */}
                 <div className="warning-section">
-                    <div className="warning-box">
-                        <div className="warning-icon">⚠️</div>
-                        <div className="warning-content">
-                            <h3>ВАЖНО!</h3>
-                            <p>
-                                <strong>QR - код обновляется каждые 5 минут, оплата по истёкшим реквизитам может привести к потере средств.</strong>
-                            </p>
-                        </div>
+                  <div className="warning-box">
+                    <div className="warning-icon">⚠️</div>
+                    <div className="warning-content">
+                      <h3>ВАЖНО!</h3>
+                      <p>
+                        <strong>QR-код обновляется каждые 5 минут, оплата по истёкшим реквизитам может привести к потере средств.</strong>
+                      </p>
                     </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-
-        {/* ОШИБКА */}
         {error && (
           <div className="error-section">
             <div className="error-box">
@@ -219,7 +258,6 @@ const PaymentPage = () => {
           </div>
         )}
 
-        {/* FAQ */}
         <div className="faq-section">
           <h3>Частые вопросы</h3>
           <details className="faq-item">
