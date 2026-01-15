@@ -1,21 +1,14 @@
-from fastapi import FastAPI, Depends
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
 from sqlalchemy.exc import OperationalError
-from urllib.parse import quote
 import time
 
-from . import models, crud, utils, config
-from .database import engine, get_db
-from .config import settings
+from .db import models
+from .db.database import engine
+from .core.config import settings
 from .api import router as api_router
 
-app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
-    debug=settings.DEBUG
-)
+app = FastAPI(debug=settings.DEBUG)
 
 app.include_router(api_router)
 
@@ -26,6 +19,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.on_event("startup")
 async def startup_event():
@@ -42,40 +36,11 @@ async def startup_event():
             else:
                 raise e
 
-@app.get("/pay/{payment_id}")
-async def payment_gateway_tracked(payment_id: str, db: Session = Depends(get_db)):
-    try:
-        is_working, message = utils.is_working_hours(db, config.MOSCOW_TZ)
 
-        if not is_working:
-            return RedirectResponse(
-                url=f"{settings.FRONTEND_URL}/payment-error?type=closed&message={quote(message)}",
-                status_code=307
-            )
-
-        dynamic_url = crud.get_active_dynamic_url(db)
-
-        if not dynamic_url:
-            return RedirectResponse(
-                url=f"{settings.FRONTEND_URL}/payment-error?type=maintenance",
-                status_code=307
-            )
-
-        return RedirectResponse(
-            url=dynamic_url.target_url,
-            status_code=307
-        )
-
-    except Exception as e:
-        print(f"❌ Error in payment_gateway: {str(e)}")
-        return RedirectResponse(
-            url=f"{settings.FRONTEND_URL}/payment-error?type=error&message={quote(str(e))}",
-            status_code=307
-        )
 @app.get("/health")
 async def health_check():
     return {
         "status": "healthy",
         "app": settings.APP_NAME,
-        "version": settings.APP_VERSION
+        "version": settings.APP_VERSION,
     }

@@ -1,0 +1,159 @@
+.payment-error-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.error-container {
+  background: white;
+  border-radius: 12px;
+  padding: 48px;
+  max-width: 600px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.error-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.error-title {
+  font-size: 28px;
+  color: #1a1a1a;
+  margin: 0 0 16px 0;
+  font-weight: 600;
+}
+
+.error-description {
+  color: #6b7280;
+  font-size: 15px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.info-box {
+  background: #f0f9ff;
+  border: 1px solid #bfdbfe;
+  border-left: 4px solid #2563eb;
+  padding: 20px;
+  text-align: left;
+  margin-bottom: 32px;
+  border-radius: 8px;
+}
+
+.info-box strong {
+  color: #1a1a1a;
+  display: block;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.current-time {
+  font-family: 'Courier New', monospace;
+  font-size: 32px;
+  font-weight: 700;
+  color: #2563eb;
+  margin: 0;
+}
+
+.error-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.error-button {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-family: inherit;
+}
+
+.error-button.primary {
+  background: #2563eb;
+  color: white;
+}
+
+.error-button.primary:hover {
+  background: #1d4ed8;
+}
+
+.error-button.primary:active {
+  background: #1e40af;
+}
+
+.error-button.secondary {
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.error-button.secondary:hover {
+  background: #f9fafb;
+  color: #4b5563;
+  border-color: #9ca3af;
+}
+
+@media (max-width: 600px) {
+  .error-container {
+    padding: 32px 24px;
+  }
+
+  .error-icon {
+    font-size: 56px;
+  }
+
+  .error-title {
+    font-size: 24px;
+  }
+
+  .error-description {
+    font-size: 14px;
+  }
+
+  .current-time {
+    font-size: 28px;
+  }
+
+  .error-button {
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+}

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Any
+
 
 class DynamicPaymentURLCreate(BaseModel):
     target_url: str = Field(..., min_length=10, max_length=500)
@@ -21,13 +22,8 @@ class DynamicPaymentURLResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
 class APIResponse(BaseModel):
     success: bool
     message: Optional[str] = None
     data: Optional[Any] = None
-
-
-class QRCodeResponse(BaseModel):
-    success: bool
-    qr_code: Dict[str, Any]
-    message: str

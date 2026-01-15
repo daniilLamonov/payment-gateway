@@ -1,9 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import PaymentPage from './components/PaymentPage';
-import AdminPanel from './components/AdminPanel';
-import PaymentError from "./components/PaymentError";
-import Login from './components/Login';
+import PaymentPage from './components/Payment/PaymentPage';
+import AdminPanel from './components/AdminPanel/AdminPanel';
+import PaymentError from "./components/ErrorPage/PaymentError";
+import Login from './components/Login/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import './App.css';
 

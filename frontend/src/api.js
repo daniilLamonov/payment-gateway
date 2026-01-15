@@ -35,12 +35,18 @@ api.interceptors.response.use(
 );
 
 export const login = async (username, password) => {
-  const response = await axios.post(`${API_URL}/auth/login`, {
-    username,
-    password
+  const formData = new URLSearchParams();
+  formData.append('username', username);
+  formData.append('password', password);
+
+  const response = await axios.post(`${API_URL}/auth/login`, formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    }
   });
   return response.data;
 };
+
 
 export const verifyAuth = async () => {
   const response = await api.get('/auth/verify');
@@ -61,11 +67,6 @@ export const generateQR = async () => {
 
 export const getPaymentLink = async () => {
   const response = await axios.get(`${API_URL}/payment-link`);
-  return response.data;
-};
-
-export const checkPaymentStatus = async () => {
-  const response = await axios.get(`${API_URL}/payment-status`);
   return response.data;
 };
 
