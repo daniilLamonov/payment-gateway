@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...core import utils
-from ...db import crud
+from ...db import crud, models
 from ...api.schemas.payment_link import (
     APIResponse,
     DynamicPaymentURLCreate,
@@ -13,7 +13,7 @@ from ...api.schemas.payment_link import (
 )
 from ...api.schemas.workhours import WorkingHoursUpdate, WorkingHoursResponse
 from ...core.auth import get_current_admin
-from ...core.config import settings
+from ...core.config import settings, MOSCOW_TZ
 from ...db.database import get_db
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -57,11 +57,10 @@ async def get_all_working_hours(
 
 @router.post("/dynamic-redirect", response_model=APIResponse)
 async def update_dynamic_redirect(
-    url_data: DynamicPaymentURLCreate,
-    db: Session = Depends(get_db),
-    current_admin: dict = Depends(get_current_admin),
+        url_data: DynamicPaymentURLCreate,
+        db: Session = Depends(get_db),
+        current_admin: dict = Depends(get_current_admin),
 ):
-
     try:
         if url_data.valid_from >= url_data.valid_until:
             raise HTTPException(
@@ -86,18 +85,85 @@ async def update_dynamic_redirect(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.patch("/dynamic-redirect/{redirect_id}/toggle")
+async def toggle_redirect_status(
+        redirect_id: int,
+        db: Session = Depends(get_db),
+        current_admin: dict = Depends(get_current_admin)
+):
+    redirect = db.query(models.DynamicPaymentURL).filter(
+        models.DynamicPaymentURL.id == redirect_id
+    ).first()
+
+    if not redirect:
+        raise HTTPException(status_code=404, detail="Ссылка не найдена")
+
+    now = datetime.now(MOSCOW_TZ)
+
+    valid_from = redirect.valid_from
+    valid_until = redirect.valid_until
+
+    if valid_from.tzinfo is None:
+        valid_from = valid_from.replace(tzinfo=MOSCOW_TZ)
+
+    if valid_until.tzinfo is None:
+        valid_until = valid_until.replace(tzinfo=MOSCOW_TZ)
+
+    if redirect.is_active:
+        redirect.is_active = False
+        db.commit()
+        db.refresh(redirect)
+
+        return {
+            "success": True,
+            "message": "Ссылка деактивирована",
+            "redirect": {
+                "id": redirect.id,
+                "is_active": redirect.is_active
+            }
+        }
+    else:
+        if now < valid_from:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ссылка еще не действительна. Начало действия: {valid_from.strftime('%d.%m.%Y %H:%M')}"
+            )
+
+        if now > valid_until:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Срок действия ссылки истёк: {valid_until.strftime('%d.%m.%Y %H:%M')}"
+            )
+
+        db.query(models.DynamicPaymentURL).update({"is_active": False})
+
+        redirect.is_active = True
+        db.commit()
+        db.refresh(redirect)
+
+        return {
+            "success": True,
+            "message": "Ссылка активирована. Все другие ссылки деактивированы.",
+            "redirect": {
+                "id": redirect.id,
+                "is_active": redirect.is_active
+            }
+        }
+
+
 @router.get("/dynamic-redirects", response_model=List[DynamicPaymentURLResponse])
 async def get_all_redirects(
-    db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)
+        db: Session = Depends(get_db),
+        current_admin: dict = Depends(get_current_admin)
 ):
     return crud.get_all_dynamic_urls(db)
 
 
 @router.get("/current-redirect")
 async def get_current_redirect(
-    db: Session = Depends(get_db), current_admin: dict = Depends(get_current_admin)
+        db: Session = Depends(get_db),
+        current_admin: dict = Depends(get_current_admin)
 ):
-
     dynamic_url = crud.get_active_dynamic_url(db)
 
     if not dynamic_url:
@@ -112,5 +178,7 @@ async def get_current_redirect(
             "valid_from": dynamic_url.valid_from.isoformat(),
             "valid_until": dynamic_url.valid_until.isoformat(),
             "notes": dynamic_url.notes,
+            "is_active": dynamic_url.is_active,
+            "created_at": dynamic_url.created_at.isoformat() if hasattr(dynamic_url, 'created_at') else None
         },
     }

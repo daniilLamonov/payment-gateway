@@ -5,6 +5,7 @@ import {
   getCurrentRedirect,
   updateWorkingHours,
   getAllWorkingHours,
+  toggleRedirectStatus,
   logout
 } from '../../api';
 import './AdminPanel.css';
@@ -16,7 +17,7 @@ const AdminPanel = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [activeTab, setActiveTab] = useState('current'); // current, redirects, hours
+  const [activeTab, setActiveTab] = useState('current');
 
   const [newRedirect, setNewRedirect] = useState({
     target_url: '',
@@ -24,17 +25,18 @@ const AdminPanel = () => {
     valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
     notes: ''
   });
+
   const handleLogout = async () => {
-  try {
-    await logout();
-    window.location.href = '/login';
-  } catch (err) {
-    console.error('Logout error:', err);
-    localStorage.removeItem('admin_token');
-    localStorage.removeItem('admin_username');
-    window.location.href = '/login';
-  }
-};
+    try {
+      await logout();
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('Logout error:', err);
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_username');
+      window.location.href = '/login';
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -42,7 +44,7 @@ const AdminPanel = () => {
 
   const fetchData = async () => {
     try {
-      const [currentData, redirectsData, hoursData, logsData, sessionsData] = await Promise.all([
+      const [currentData, redirectsData, hoursData] = await Promise.all([
         getCurrentRedirect(),
         getAllRedirects(),
         getAllWorkingHours(),
@@ -54,7 +56,6 @@ const AdminPanel = () => {
 
       setRedirects(redirectsData);
 
-      // Преобразуем рабочие часы в объект
       const hoursObj = {};
       hoursData.forEach(hour => {
         hoursObj[hour.day_of_week] = {
@@ -65,7 +66,6 @@ const AdminPanel = () => {
       });
       setWorkingHours(hoursObj);
 
-      // Инициализируем недостающие дни
       for (let i = 0; i < 7; i++) {
         if (!hoursObj[i]) {
           hoursObj[i] = {
@@ -80,6 +80,30 @@ const AdminPanel = () => {
     } catch (err) {
       console.error('Error fetching data:', err);
       setError('Ошибка при загрузке данных');
+    }
+  };
+
+  const handleToggleRedirect = async (redirectId, isActive) => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const data = await toggleRedirectStatus(redirectId);
+
+      if (data.success) {
+        setSuccess(data.message);
+        await fetchData();
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.detail || 'Ошибка при изменении статуса ссылки';
+      setError(errorMessage);
+
+      if (errorMessage.includes('истёк') || errorMessage.includes('не действительна')) {
+        alert(errorMessage);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -171,7 +195,6 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {/* УВЕДОМЛЕНИЯ */}
         {error && (
           <div className="notification error-notification">
             <span className="notification-icon">❌</span>
@@ -188,7 +211,6 @@ const AdminPanel = () => {
           </div>
         )}
 
-        {/* ТАБЫ */}
         <div className="admin-tabs">
           <button
             className={`admin-tab ${activeTab === 'current' ? 'active' : ''}`}
@@ -210,10 +232,8 @@ const AdminPanel = () => {
           </button>
         </div>
 
-        {/* КОНТЕНТ ТАБОВ */}
         <div className="admin-content">
 
-          {/* ТАБ: ТЕКУЩАЯ ССЫЛКА */}
           {activeTab === 'current' && (
             <div className="tab-content">
               <h2>🟢 Текущая активная ссылка</h2>
@@ -324,7 +344,6 @@ const AdminPanel = () => {
             </div>
           )}
 
-          {/* ТАБ: ВСЕ ССЫЛКИ */}
           {activeTab === 'redirects' && (
             <div className="tab-content">
               <h2>🔗 История всех ссылок</h2>
@@ -340,9 +359,13 @@ const AdminPanel = () => {
                       key={redirect.id}
                       className={`redirect-card ${redirect.is_active ? 'active' : 'inactive'}`}
                     >
-                      <div className="redirect-status">
+                      <button
+                        className={`redirect-status-btn ${redirect.is_active ? 'active' : 'inactive'}`}
+                        onClick={() => handleToggleRedirect(redirect.id, redirect.is_active)}
+                        disabled={loading}
+                      >
                         {redirect.is_active ? '🟢 АКТИВНА' : '⚫ неактивна'}
-                      </div>
+                      </button>
 
                       <div className="redirect-info">
                         <p className="redirect-id">ID: {redirect.id}</p>
@@ -369,7 +392,6 @@ const AdminPanel = () => {
             </div>
           )}
 
-          {/* ТАБ: РАБОЧЕЕ ВРЕМЯ */}
           {activeTab === 'hours' && (
             <div className="tab-content">
               <h2>⏰ Рабочие часы (Московское время)</h2>

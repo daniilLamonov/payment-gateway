@@ -94,3 +94,8 @@ export const getAllWorkingHours = async () => {
   const response = await api.get('/admin/working-hours');
   return response.data;
 };
+export const toggleRedirectStatus = async (redirectId) => {
+  const response = await api.patch(`/admin/dynamic-redirect/${redirectId}/toggle`);
+  return response.data;
+};
+

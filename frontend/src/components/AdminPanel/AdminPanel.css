@@ -637,4 +637,38 @@ details pre {
     width: 100%;
   }
 }
+.redirect-status-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  margin-bottom: 16px;
+}
+
+.redirect-status-btn.active {
+  background: #10b981;
+  color: white;
+}
+
+.redirect-status-btn.active:hover:not(:disabled) {
+  background: #059669;
+}
+
+.redirect-status-btn.inactive {
+  background: #6b7280;
+  color: white;
+}
+
+.redirect-status-btn.inactive:hover:not(:disabled) {
+  background: #4b5563;
+}
+
+.redirect-status-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
