@@ -5,7 +5,7 @@ from starlette import status
 from ...core.auth import get_current_admin, create_access_token, verify_password
 from ...core.config import settings
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 security = HTTPBearer()
 

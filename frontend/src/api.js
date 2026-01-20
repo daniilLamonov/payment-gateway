@@ -39,7 +39,7 @@ export const login = async (username, password) => {
   formData.append('username', username);
   formData.append('password', password);
 
-  const response = await axios.post(`${API_URL}/auth/login`, formData, {
+  const response = await axios.post(`${API_URL}/api/auth/login`, formData, {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
     }
@@ -49,12 +49,12 @@ export const login = async (username, password) => {
 
 
 export const verifyAuth = async () => {
-  const response = await api.get('/auth/verify');
+  const response = await api.get('/api/auth/verify');
   return response.data;
 };
 
 export const logout = async () => {
-  const response = await api.post('/auth/logout');
+  const response = await api.post('/api/auth/logout');
   localStorage.removeItem('admin_token');
   localStorage.removeItem('admin_username');
   return response.data;
@@ -71,31 +71,31 @@ export const getPaymentLink = async () => {
 };
 
 export const updateDynamicRedirect = async (data) => {
-  const response = await api.post('/admin/dynamic-redirect', data);
+  const response = await api.post('/api/admin/dynamic-redirect', data);
   return response.data;
 };
 
 export const getAllRedirects = async () => {
-  const response = await api.get('/admin/dynamic-redirects');
+  const response = await api.get('/api/admin/dynamic-redirects');
   return response.data;
 };
 
 export const getCurrentRedirect = async () => {
-  const response = await api.get('/admin/current-redirect');
+  const response = await api.get('/api/admin/current-redirect');
   return response.data;
 };
 
 export const updateWorkingHours = async (data) => {
-  const response = await api.put('/admin/working-hours', data);
+  const response = await api.put('/api/admin/working-hours', data);
   return response.data;
 };
 
 export const getAllWorkingHours = async () => {
-  const response = await api.get('/admin/working-hours');
+  const response = await api.get('/api/admin/working-hours');
   return response.data;
 };
 export const toggleRedirectStatus = async (redirectId) => {
-  const response = await api.patch(`/admin/dynamic-redirect/${redirectId}/toggle`);
+  const response = await api.patch(`/api/admin/dynamic-redirect/${redirectId}/toggle`);
   return response.data;
 };
 

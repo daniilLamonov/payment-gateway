@@ -16,7 +16,7 @@ from ...core.auth import get_current_admin
 from ...core.config import settings, MOSCOW_TZ
 from ...db.database import get_db
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 @router.put("/working-hours", response_model=APIResponse)
