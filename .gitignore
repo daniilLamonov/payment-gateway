@@ -1,42 +1,212 @@
-# Python
+# ============================================
+# PYTHON / FASTAPI BACKEND
+# ============================================
 *.pyc
+*.pyo
+*.pyd
 *~
-__pycache__
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
 
-# Env
-.env
-myvenv/
+# Virtual environments
 venv/
+env/
+ENV/
+myvenv/
+.venv
 
-# Database
+# ============================================
+# NODE.JS / REACT FRONTEND
+# ============================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+package-lock.json
+yarn.lock
+
+# Production build
+build/
+dist/
+
+# Testing
+coverage/
+.nyc_output
+
+# React / Next.js
+.next/
+out/
+.cache/
+
+# ============================================
+# DATABASE
+# ============================================
+*.db
+*.sqlite
+*.sqlite3
 db.sqlite3
+*.sql
+postgresql_data/
+postgres_data/
 
-# Static folder at project root
-/static/
+# ============================================
+# ENVIRONMENT VARIABLES
+# ============================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
 
-# macOS
-._*
-.DS_Store
-.fseventsd
-.Spotlight-V100
+# ============================================
+# DOCKER
+# ============================================
+*.log
+docker-compose.override.yml
 
-# Windows
-Thumbs.db*
-ehthumbs*.db
-[Dd]esktop.ini
-$RECYCLE.BIN/
+# ============================================
+# SSL / CERTIFICATES
+# ============================================
+certbot/
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
 
-# Visual Studio
+# ============================================
+# IDE / EDITORS
+# ============================================
+# VSCode
 .vscode/
 .history/
 *.code-workspace
 
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# JetBrains
+.idea/
+*.iml
+out/
+
+# ============================================
+# OPERATING SYSTEMS
+# ============================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ============================================
+# PROJECT SPECIFIC
+# ============================================
+# Static files
+/static/
+staticfiles/
+media/
+
+# User uploaded files
 files/
-# SSL Certificates (не коммитим приватные ключи!)
-certbot/
+uploads/
+
+# Nginx configs (if temporary)
+nginx/conf.d/
+nginx/logs/
+
+# Logs
+*.log
+logs/
+*.log.*
 
 # Temporary files
+*.tmp
+*.temp
 *.save
+*.bak
+*.swp
 
-# Nginx configs (временные)
-nginx/
+# ============================================
+# MISC
+# ============================================
+*.cache
+.sass-cache/
+.eslintcache
+.parcel-cache/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional REPL history
+.node_repl_history
+
+# dotenv environment variable files
+.env*
+
+# Typescript
+*.tsbuildinfo
+
+# Webpack
+.webpack/
+
+# Misc
+.vercel

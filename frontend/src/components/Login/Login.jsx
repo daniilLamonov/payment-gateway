@@ -87,7 +87,7 @@ const Login = () => {
         </form>
 
         <div className="login-footer">
-          <a href="/frontend/public" className="back-link">← Вернуться на главную</a>
+          <a href="/" className="back-link">← Вернуться на главную</a>
         </div>
       </div>
     </div>
