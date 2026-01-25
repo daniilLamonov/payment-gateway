@@ -98,4 +98,8 @@ export const toggleRedirectStatus = async (redirectId) => {
   const response = await api.patch(`/api/admin/dynamic-redirect/${redirectId}/toggle`);
   return response.data;
 };
+export const deleteRedirect = async (redirectId) => {
+    const response = await api.delete(`/api/admin/${redirectId}`);
+    return response.data
+}
 

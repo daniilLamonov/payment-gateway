@@ -339,8 +339,8 @@
   padding-right: 120px;
 }
 
-.redirect-id {
-  font-size: 12px;
+.redirect-name {
+  font-size: 14px;
   color: #999;
   margin: 0 0 10px 0;
 }
@@ -672,3 +672,35 @@ details pre {
   cursor: not-allowed;
 }
 
+
+.card-actions-top-right {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.btn-delete {
+  background-color: #ff4d4f; /* Красный цвет */
+  color: white;
+  border: none;
+  border-radius: 6px;
+  width: 100px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 1.1rem;
+}
+
+.btn-delete:hover {
+  background-color: #d9363e;
+}
+
+.btn-delete:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

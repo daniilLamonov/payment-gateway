@@ -20,23 +20,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.on_event("startup")
-async def startup_event():
-    max_retries = 10
-    retry_interval = 2
-
-    for attempt in range(max_retries):
-        try:
-            models.Base.metadata.create_all(bind=engine)
-            break
-        except OperationalError as e:
-            if attempt < max_retries - 1:
-                time.sleep(retry_interval)
-            else:
-                raise e
-
-
 @app.get("/health")
 async def health_check():
     return {

@@ -177,8 +177,18 @@ async def get_current_redirect(
             "target_url": dynamic_url.target_url,
             "valid_from": dynamic_url.valid_from.isoformat(),
             "valid_until": dynamic_url.valid_until.isoformat(),
-            "notes": dynamic_url.notes,
+            "name": dynamic_url.name,
             "is_active": dynamic_url.is_active,
             "created_at": dynamic_url.created_at.isoformat() if hasattr(dynamic_url, 'created_at') else None
         },
     }
+
+@router.delete("/{redirect_id}")
+async def delete_redirect(
+        redirect_id: int,
+        db: Session = Depends(get_db),
+        current_admin: dict = Depends(get_current_admin)):
+    redirect = crud.delete_dynamic_url(db, redirect_id)
+    if not redirect:
+        raise HTTPException(status_code=404, detail="redirect does not exist")
+    return {"success": True}

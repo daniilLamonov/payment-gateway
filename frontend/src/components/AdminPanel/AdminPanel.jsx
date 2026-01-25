@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  updateDynamicRedirect,
-  getAllRedirects,
-  getCurrentRedirect,
-  updateWorkingHours,
-  getAllWorkingHours,
-  toggleRedirectStatus,
-  logout
+    updateDynamicRedirect,
+    getAllRedirects,
+    getCurrentRedirect,
+    updateWorkingHours,
+    getAllWorkingHours,
+    toggleRedirectStatus,
+    logout, deleteRedirect
 } from '../../api';
 import './AdminPanel.css';
 
@@ -20,10 +20,10 @@ const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState('current');
 
   const [newRedirect, setNewRedirect] = useState({
+    name: '',
     target_url: '',
     valid_from: new Date().toISOString().slice(0, 16),
-    valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-    notes: ''
+    valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
   });
 
   const handleLogout = async () => {
@@ -82,6 +82,23 @@ const AdminPanel = () => {
       setError('Ошибка при загрузке данных');
     }
   };
+  const handleDeleteRedirect = async (redirectId) => {
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await deleteRedirect(redirectId);
+      setSuccess('Ссылка успешно удалена');
+      await fetchData();
+    } catch (err) {
+       const msg = err.response?.data?.detail || 'Ошибка при удалении';
+       setError(typeof msg === 'string' ? msg : 'Ошибка удаления');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleToggleRedirect = async (redirectId, isActive) => {
     setLoading(true);
@@ -119,19 +136,19 @@ const AdminPanel = () => {
 
     try {
       const data = await updateDynamicRedirect({
+        name: newRedirect.name,
         target_url: newRedirect.target_url,
         valid_from: new Date(newRedirect.valid_from).toISOString(),
-        valid_until: new Date(newRedirect.valid_until).toISOString(),
-        notes: newRedirect.notes
+        valid_until: new Date(newRedirect.valid_until).toISOString()
       });
 
       if (data.success) {
         setSuccess(data.message);
         setNewRedirect({
+          name: '',
           target_url: '',
           valid_from: new Date().toISOString().slice(0, 16),
-          valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-          notes: ''
+          valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
         });
         fetchData();
       }
@@ -186,18 +203,16 @@ const AdminPanel = () => {
         <div className="admin-header">
           <div className="admin-header-top">
             <div>
-              <h1>📊 Админ-панель платежной системы</h1>
-              <p className="admin-subtitle">Управление платёжным шлюзом</p>
+              <h1>Админ-панель платежной системы</h1>
             </div>
-            <button onClick={handleLogout} className="btn-logout">
-              🚪 Выйти
+            <button onClick={handleLogout} className="btn-logout">Выйти
             </button>
           </div>
         </div>
 
         {error && (
           <div className="notification error-notification">
-            <span className="notification-icon">❌</span>
+            <span className="notification-icon"></span>
             <span>{error}</span>
             <button className="notification-close" onClick={() => setError(null)}>×</button>
           </div>
@@ -205,7 +220,7 @@ const AdminPanel = () => {
 
         {success && (
           <div className="notification success-notification">
-            <span className="notification-icon">✅</span>
+            <span className="notification-icon"></span>
             <span>{success}</span>
             <button className="notification-close" onClick={() => setSuccess(null)}>×</button>
           </div>
@@ -216,19 +231,19 @@ const AdminPanel = () => {
             className={`admin-tab ${activeTab === 'current' ? 'active' : ''}`}
             onClick={() => setActiveTab('current')}
           >
-            🟢 Текущая ссылка
+            Текущая ссылка
           </button>
           <button
             className={`admin-tab ${activeTab === 'redirects' ? 'active' : ''}`}
             onClick={() => setActiveTab('redirects')}
           >
-            🔗 Все ссылки
+            Все ссылки
           </button>
           <button
             className={`admin-tab ${activeTab === 'hours' ? 'active' : ''}`}
             onClick={() => setActiveTab('hours')}
           >
-            ⏰ Рабочее время
+            Рабочее время
           </button>
         </div>
 
@@ -236,11 +251,17 @@ const AdminPanel = () => {
 
           {activeTab === 'current' && (
             <div className="tab-content">
-              <h2>🟢 Текущая активная ссылка</h2>
+              <h2>Текущая активная ссылка</h2>
 
               {currentRedirect ? (
                 <div className="current-redirect-box">
                   <div className="info-row">
+                    {currentRedirect.name && (
+                    <div className="info-row">
+                      <span className="info-label">Название:</span>
+                      <span className="info-value">{currentRedirect.name}</span>
+                    </div>
+                    )}
                     <span className="info-label">Шлюз (ваша ссылка):</span>
                     <div className="info-value">
                       <code className="url-code">{currentRedirect.gateway_url}</code>
@@ -251,11 +272,10 @@ const AdminPanel = () => {
                           setSuccess('Ссылка скопирована');
                         }}
                       >
-                        📋 Копировать
+                        Копировать
                       </button>
                     </div>
                   </div>
-
                   <div className="info-row">
                     <span className="info-label">Редиректит на (СБП):</span>
                     <div className="info-value">
@@ -269,17 +289,10 @@ const AdminPanel = () => {
                       {formatDate(currentRedirect.valid_from)} — {formatDate(currentRedirect.valid_until)}
                     </span>
                   </div>
-
-                  {currentRedirect.notes && (
-                    <div className="info-row">
-                      <span className="info-label">Примечание:</span>
-                      <span className="info-value">{currentRedirect.notes}</span>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="no-data">
-                  <p>❌ Нет активной ссылки</p>
+                  <p>Нет активной ссылки</p>
                   <p>Добавьте новую ссылку ниже</p>
                 </div>
               )}
@@ -290,6 +303,14 @@ const AdminPanel = () => {
                   Когда вы добавляете новую ссылку, все старые ссылки автоматически деактивируются.
                 </p>
 
+                <div className="form-group">
+                  <label>Название</label>
+                  <textarea
+                    value={newRedirect.name}
+                    onChange={(e) => setNewRedirect({ ...newRedirect, name: e.target.value })}
+                    className="form-input"
+                  />
+                </div>
                 <div className="form-group">
                   <label>Ссылка на оплату (от банка/платёжной системы)</label>
                   <input
@@ -322,23 +343,12 @@ const AdminPanel = () => {
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label>Примечание (опционально)</label>
-                  <textarea
-                    placeholder="Например: Счет в Сбербанке, выписка от 1 января"
-                    value={newRedirect.notes}
-                    onChange={(e) => setNewRedirect({ ...newRedirect, notes: e.target.value })}
-                    className="form-textarea"
-                    rows="3"
-                  />
-                </div>
-
                 <button
                   onClick={handleAddRedirect}
                   disabled={loading}
                   className="btn btn-primary btn-large"
                 >
-                  {loading ? '⏳ Добавляю...' : '✅ Добавить ссылку'}
+                  {loading ? '⏳ Добавляю...' : 'Добавить ссылку'}
                 </button>
               </div>
             </div>
@@ -346,7 +356,7 @@ const AdminPanel = () => {
 
           {activeTab === 'redirects' && (
             <div className="tab-content">
-              <h2>🔗 История всех ссылок</h2>
+              <h2>История всех ссылок</h2>
 
               {redirects.length === 0 ? (
                 <div className="no-data">
@@ -359,16 +369,26 @@ const AdminPanel = () => {
                       key={redirect.id}
                       className={`redirect-card ${redirect.is_active ? 'active' : 'inactive'}`}
                     >
-                      <button
+                        <button
                         className={`redirect-status-btn ${redirect.is_active ? 'active' : 'inactive'}`}
                         onClick={() => handleToggleRedirect(redirect.id, redirect.is_active)}
                         disabled={loading}
                       >
-                        {redirect.is_active ? '🟢 АКТИВНА' : '⚫ неактивна'}
+                        {redirect.is_active ? 'АКТИВНА' : 'НЕАКТИВНА'}
                       </button>
+                      <div className="card-actions-top-right">
+                        <button
+                          className="btn-delete"
+                          onClick={() => handleDeleteRedirect(redirect.id)}
+                          disabled={loading}
+                          title="Удалить ссылку"
+                        >
+                          Удалить
+                        </button>
+                      </div>
 
                       <div className="redirect-info">
-                        <p className="redirect-id">ID: {redirect.id}</p>
+                        <p className="redirect-name"><strong>Название</strong>: {redirect.name}</p>
                         <p className="redirect-url">
                           <strong>Ссылка:</strong><br />
                           <code>{redirect.target_url}</code>
@@ -376,11 +396,6 @@ const AdminPanel = () => {
                         <p className="redirect-dates">
                           <strong>Действует:</strong> {formatDate(redirect.valid_from)} — {formatDate(redirect.valid_until)}
                         </p>
-                        {redirect.notes && (
-                          <p className="redirect-notes">
-                            <strong>Примечание:</strong> {redirect.notes}
-                          </p>
-                        )}
                         <p className="redirect-created">
                           Добавлена: {formatDate(redirect.created_at)}
                         </p>
@@ -394,7 +409,7 @@ const AdminPanel = () => {
 
           {activeTab === 'hours' && (
             <div className="tab-content">
-              <h2>⏰ Рабочие часы (Московское время)</h2>
+              <h2>Рабочие часы (Московское время)</h2>
               <p className="section-description">
                 Укажите часы, в которые принимаются платежи. Вне этого времени пользователи увидят сообщение о закрытии.
               </p>

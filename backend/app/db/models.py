@@ -14,12 +14,12 @@ class DynamicPaymentURL(Base):
     __tablename__ = "dynamic_payment_urls"
 
     id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), index=True)
     target_url = Column(String(500), nullable=False)
     valid_from = Column(DateTime(timezone=True), nullable=False)
     valid_until = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    notes = Column(Text, nullable=True)
     supports_amount = Column(Boolean, default=True)
     amount_parameter = Column(String(20), default="sum")
 

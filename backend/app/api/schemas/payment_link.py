@@ -4,21 +4,19 @@ from typing import Optional, Any
 
 
 class DynamicPaymentURLCreate(BaseModel):
+    name: str
     target_url: str = Field(..., min_length=10, max_length=500)
     valid_from: datetime
     valid_until: datetime
-    notes: Optional[str] = None
-
 
 class DynamicPaymentURLResponse(BaseModel):
     id: int
+    name: str
     target_url: str
     valid_from: datetime
     valid_until: datetime
     is_active: bool
     created_at: datetime
-    notes: Optional[str] = None
-
     class Config:
         from_attributes = True
 

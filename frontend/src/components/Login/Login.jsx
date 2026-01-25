@@ -82,7 +82,7 @@ const Login = () => {
             disabled={loading}
             className="login-button"
           >
-            {loading ? '⏳ Вход...' : '🔓 Войти'}
+            {loading ? 'Вход...' : 'Войти'}
           </button>
         </form>
 

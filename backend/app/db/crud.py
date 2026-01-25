@@ -45,7 +45,7 @@ def create_dynamic_url(
         valid_from=url_data.valid_from,
         valid_until=url_data.valid_until,
         is_active=True,
-        notes=url_data.notes,
+        name=url_data.name,
     )
 
     db.add(new_url)
@@ -54,6 +54,16 @@ def create_dynamic_url(
 
     return new_url
 
+def delete_dynamic_url(
+    db: Session,
+    id: int
+) -> bool:
+    existing = db.query(models.DynamicPaymentURL).get(id)
+    if not existing:
+        return False
+    db.delete(existing)
+    db.commit()
+    return True
 
 def get_working_hours_by_day(
     db: Session, day_of_week: int
