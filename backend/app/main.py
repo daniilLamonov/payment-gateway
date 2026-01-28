@@ -3,7 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import settings
 from .api import router as api_router
 
-app = FastAPI(debug=settings.DEBUG)
+app = FastAPI(
+    debug=settings.DEBUG,
+    docs_url=None if not settings.DEBUG else "/docs",
+    redoc_url=None if not settings.DEBUG else "/redoc"
+)
+
 
 app.include_router(api_router)
 
