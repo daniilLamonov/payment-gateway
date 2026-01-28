@@ -61,12 +61,12 @@ export const logout = async () => {
 };
 
 export const generateQR = async () => {
-  const response = await axios.get(`${API_URL}/generate-qr`);
+  const response = await axios.get(`${API_URL}/api/generate-qr`);
   return response.data;
 };
 
 export const getPaymentLink = async () => {
-  const response = await axios.get(`${API_URL}/payment-link`);
+  const response = await axios.get(`${API_URL}/api/payment-link`);
   return response.data;
 };
 

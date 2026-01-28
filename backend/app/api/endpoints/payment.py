@@ -6,7 +6,7 @@ from ...core import utils, config
 from ...db import crud
 from ...db.database import get_db
 
-router = APIRouter(tags=["payment"])
+router = APIRouter(prefix="/api", tags=["payment"])
 
 
 @router.get("/generate-qr")

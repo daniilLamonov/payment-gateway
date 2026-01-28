@@ -1,10 +1,5 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.exc import OperationalError
-import time
-
-from .db import models
-from .db.database import engine
 from .core.config import settings
 from .api import router as api_router
 
@@ -24,6 +19,4 @@ app.add_middleware(
 async def health_check():
     return {
         "status": "healthy",
-        "app": settings.APP_NAME,
-        "version": settings.APP_VERSION,
     }
