@@ -15,7 +15,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
     if form_data.username == settings.ADMIN_USERNAME:
         if verify_password(form_data.password, settings.ADMIN_PASSWORD):
             token = create_access_token(data={"sub": form_data.username})
-            return {"access_token": token, "token_type": "bearer"}
+            return {
+                "access_token": token,
+                "token_type": "bearer",
+                "username": form_data.username,
+            }
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Incorrect username or password",

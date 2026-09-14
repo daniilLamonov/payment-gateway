@@ -1,15 +1,28 @@
+import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 from .config import settings
+
+logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except UnknownHashError:
+        logger.error(
+            "ADMIN_PASSWORD is not a bcrypt hash - login will always fail. "
+            "Put the hash, not the plain password, into .env. Generate it with: "
+            "python -c \"from passlib.context import CryptContext; "
+            "print(CryptContext(schemes=['bcrypt']).hash('<password>'))\""
+        )
+        return False
 
 def create_access_token(data: dict) -> str:
     payload = data.copy()
