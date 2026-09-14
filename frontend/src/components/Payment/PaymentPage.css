@@ -370,9 +370,15 @@
 .qr-image {
   display: block;
   width: 100%;
-  max-width: 260px;
+  max-width: 420px;
   height: auto;
   margin: 0 auto;
   border-radius: 8px;
   background: #fff;
+}
+
+/* Когда ссылки нет, QR — единственный способ оплаты, приглушать его нельзя:
+   бледная картинка хуже читается камерой. */
+.qr-content-image {
+  opacity: 1;
 }

@@ -209,7 +209,7 @@ const PaymentPage = () => {
 
           {qrData && showQR && (
             <div className="qr-display">
-              <div className="qr-content">
+              <div className={`qr-content${qrData.image_url ? ' qr-content-image' : ''}`}>
                 {qrData.image_url ? (
                   <img
                     src={mediaUrl(qrData.image_url)}
