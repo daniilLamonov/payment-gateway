@@ -1,0 +1,35 @@
+# Общий Postgres для веб-проектов на сервере.
+# Живёт в отдельной внешней сети shared-network, портов на хост НЕ публикует,
+# поэтому не конфликтует с postgres телеграм-бота (контейнер "database", порт 5432).
+#
+# Перед запуском:  docker network create shared-network
+# Запуск:          docker compose -f infra/docker-compose.shared-postgres.yaml up -d
+
+name: shared-infra
+
+services:
+  shared-postgres:
+    image: postgres:17
+    container_name: shared-postgres
+    restart: always
+    environment:
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      - POSTGRES_USER=${DB_USER:?set DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:?set DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME:?set DB_NAME}
+    volumes:
+      - shared_postgres_data:/var/lib/postgresql/data
+    networks:
+      - shared-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  shared_postgres_data:
+
+networks:
+  shared-network:
+    external: true

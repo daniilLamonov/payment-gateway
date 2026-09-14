@@ -1,0 +1,8 @@
+# Оверлей ТОЛЬКО для первичного выпуска сертификата.
+# Подменяет боевой конфиг nginx на HTTP-only, чтобы certbot смог пройти ACME-проверку.
+# Использование:
+#   docker compose -f docker-compose.prod.yaml -f docker-compose.init.yaml up -d nginx
+services:
+  nginx:
+    volumes:
+      - ./nginx/nginx.init.conf:/etc/nginx/conf.d/default.conf:ro
