@@ -36,12 +36,16 @@ def get_all_dynamic_urls(
 def create_dynamic_url(
     db: Session,
     url_data: DynamicPaymentURLCreate,
+    qr_image: Optional[bytes] = None,
+    qr_image_type: Optional[str] = None,
 ) -> models.DynamicPaymentURL:
 
     db.query(models.DynamicPaymentURL).update({"is_active": False})
 
     new_url = models.DynamicPaymentURL(
         target_url=url_data.target_url,
+        qr_image=qr_image,
+        qr_image_type=qr_image_type,
         valid_from=url_data.valid_from,
         valid_until=url_data.valid_until,
         is_active=True,

@@ -1,12 +1,17 @@
 from datetime import datetime
-from typing import List
+from io import BytesIO
+from typing import List, Optional
+from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy.orm import Session
 
 from ...core import utils
 from ...db import crud, models
 from ...api.schemas.payment_link import (
+    ALLOWED_QR_IMAGE_TYPES,
+    MAX_QR_IMAGE_BYTES,
     APIResponse,
     DynamicPaymentURLCreate,
     DynamicPaymentURLResponse,
@@ -55,27 +60,114 @@ async def get_all_working_hours(
     return crud.get_all_working_hours(db)
 
 
+def _clean_target_url(raw: Optional[str]) -> Optional[str]:
+    """Привести ссылку к виду, пригодному для редиректа, или отвергнуть с понятным текстом."""
+    if raw is None:
+        return None
+
+    url = raw.strip()
+    if not url:
+        return None
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        raise HTTPException(
+            status_code=400,
+            detail="Ссылка должна начинаться с http:// или https:// и содержать адрес сайта. "
+                   "Например: https://qr.nspk.ru/AS100...",
+        )
+    if len(url) > 500:
+        raise HTTPException(
+            status_code=400, detail="Ссылка слишком длинная (максимум 500 символов)"
+        )
+    return url
+
+
+async def _read_qr_image(upload: Optional[UploadFile]) -> tuple[Optional[bytes], Optional[str]]:
+    """Прочитать и проверить загруженную картинку QR-кода."""
+    if upload is None or not upload.filename:
+        return None, None
+
+    content = await upload.read()
+
+    if not content:
+        raise HTTPException(status_code=400, detail="Файл QR-кода пустой")
+
+    if len(content) > MAX_QR_IMAGE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Файл слишком большой ({len(content) // 1024} КБ). "
+                   f"Максимум {MAX_QR_IMAGE_BYTES // 1024} КБ",
+        )
+
+    content_type = (upload.content_type or "").lower()
+    if content_type not in ALLOWED_QR_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Поддерживаются только изображения PNG, JPEG, WebP или GIF",
+        )
+
+    try:
+        Image.open(BytesIO(content)).verify()
+    except (UnidentifiedImageError, OSError):
+        raise HTTPException(
+            status_code=400, detail="Не удалось прочитать изображение — файл повреждён"
+        )
+
+    return content, content_type
+
+
 @router.post("/dynamic-redirect", response_model=APIResponse)
 async def update_dynamic_redirect(
-        url_data: DynamicPaymentURLCreate,
+        valid_from: datetime = Form(...),
+        valid_until: datetime = Form(...),
+        name: str = Form(""),
+        target_url: Optional[str] = Form(None),
+        qr_image: Optional[UploadFile] = File(None),
         db: Session = Depends(get_db),
         current_admin: dict = Depends(get_current_admin),
 ):
     try:
-        if url_data.valid_from >= url_data.valid_until:
+        if valid_from >= valid_until:
             raise HTTPException(
-                status_code=400, detail="valid_from must be before valid_until"
+                status_code=400,
+                detail="Дата начала должна быть раньше даты окончания",
             )
 
-        new_url = crud.create_dynamic_url(db, url_data)
+        clean_url = _clean_target_url(target_url)
+        image_bytes, image_type = await _read_qr_image(qr_image)
+
+        if not clean_url and not image_bytes:
+            raise HTTPException(
+                status_code=400,
+                detail="Укажите ссылку на оплату или загрузите изображение QR-кода "
+                       "(можно и то, и другое)",
+            )
+
+        url_data = DynamicPaymentURLCreate(
+            name=name,
+            target_url=clean_url,
+            valid_from=valid_from,
+            valid_until=valid_until,
+        )
+
+        new_url = crud.create_dynamic_url(db, url_data, image_bytes, image_type)
+
+        if clean_url and image_bytes:
+            what = "Ссылка и QR-код сохранены"
+        elif image_bytes:
+            what = "QR-код сохранён"
+        else:
+            what = "Ссылка сохранена"
 
         return {
             "success": True,
-            "message": f"Динамический редирект обновлён! Действует с {url_data.valid_from} до {url_data.valid_until}",
+            "message": f"{what}. Действует с {valid_from:%d.%m.%Y %H:%M} до {valid_until:%d.%m.%Y %H:%M}",
             "data": {
                 "id": new_url.id,
                 "gateway_url": f"{settings.PROTOCOL}://{settings.DOMAIN}/pay",
                 "target_url": new_url.target_url,
+                "qr_image_url": f"/api/qr-image/{new_url.id}" if image_bytes else None,
             },
         }
 
@@ -156,7 +248,20 @@ async def get_all_redirects(
         db: Session = Depends(get_db),
         current_admin: dict = Depends(get_current_admin)
 ):
-    return crud.get_all_dynamic_urls(db)
+    return [
+        {
+            "id": item.id,
+            "name": item.name,
+            "target_url": item.target_url,
+            "has_qr_image": item.qr_image is not None,
+            "qr_image_url": f"/api/qr-image/{item.id}" if item.qr_image else None,
+            "valid_from": item.valid_from,
+            "valid_until": item.valid_until,
+            "is_active": item.is_active,
+            "created_at": item.created_at,
+        }
+        for item in crud.get_all_dynamic_urls(db)
+    ]
 
 
 @router.get("/current-redirect")
@@ -175,6 +280,8 @@ async def get_current_redirect(
             "id": dynamic_url.id,
             "gateway_url": f"{settings.PROTOCOL}://{settings.DOMAIN}/pay",
             "target_url": dynamic_url.target_url,
+            "has_qr_image": dynamic_url.qr_image is not None,
+            "qr_image_url": f"/api/qr-image/{dynamic_url.id}" if dynamic_url.qr_image else None,
             "valid_from": dynamic_url.valid_from.isoformat(),
             "valid_until": dynamic_url.valid_until.isoformat(),
             "name": dynamic_url.name,

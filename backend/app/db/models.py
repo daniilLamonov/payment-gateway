@@ -4,6 +4,7 @@ from sqlalchemy import (
     String,
     DateTime,
     Boolean,
+    LargeBinary,
     Text,
 )
 from sqlalchemy.sql import func
@@ -15,7 +16,9 @@ class DynamicPaymentURL(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), index=True)
-    target_url = Column(String(500), nullable=False)
+    target_url = Column(String(500), nullable=True)
+    qr_image = Column(LargeBinary, nullable=True)
+    qr_image_type = Column(String(50), nullable=True)
     valid_from = Column(DateTime(timezone=True), nullable=False)
     valid_until = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True, index=True)

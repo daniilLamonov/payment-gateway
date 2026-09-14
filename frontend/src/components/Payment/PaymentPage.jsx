@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
-import { generateQR, getPaymentLink } from '../../api';
+import { generateQR, getPaymentLink, mediaUrl } from '../../api';
 import './PaymentPage.css';
 import sbpIcon from '../../assets/SBP.png';
 
@@ -90,6 +90,14 @@ const PaymentPage = () => {
 
         setPaymentLink(data);
         setLinkTimeLeft(SESSION_DURATION);
+
+        // Если админ загрузил только картинку QR-кода, кнопки выбора банка не будет —
+        // показываем QR сразу, иначе платить будет нечем.
+        if (!data.link && data.qr_image_url) {
+          setQrData({ url: null, image_url: data.qr_image_url });
+          setQrTimeLeft(SESSION_DURATION);
+          setShowQR(true);
+        }
       } catch (err) {
         setError('Ошибка при создании ссылки');
         console.error(err);
@@ -162,46 +170,60 @@ const PaymentPage = () => {
           <p className="subtitle">Завершите платеж в течении: {formatTime(pageTimeLeft)}</p>
         </div>
 
-        <div className="primary-payment">
-          <div className="primary-header">
-            <h2>Оплатить в приложении банка</h2>
-            <p className="primary-subtitle">Быстрый и удобный способ</p>
-          </div>
+        {(loading || paymentLink?.link) && (
+          <>
+            <div className="primary-payment">
+              <div className="primary-header">
+                <h2>Оплатить в приложении банка</h2>
+                <p className="primary-subtitle">Быстрый и удобный способ</p>
+              </div>
 
-          <button
-            className="btn btn-primary btn-large btn-featured"
-            onClick={handleOpenPayment}
-            disabled={loading || !paymentLink}
-          >
-            {loading ? '⏳ Загрузка...' : (
-              <>
-                <img src={sbpIcon} alt="" className="btn-icon" />
-                Выбрать банк
-              </>
-            )}
-          </button>
-        </div>
+              <button
+                className="btn btn-primary btn-large btn-featured"
+                onClick={handleOpenPayment}
+                disabled={loading || !paymentLink?.link}
+              >
+                {loading ? '⏳ Загрузка...' : (
+                  <>
+                    <img src={sbpIcon} alt="" className="btn-icon" />
+                    Выбрать банк
+                  </>
+                )}
+              </button>
+            </div>
 
-        <div className="divider">или</div>
+            <div className="divider">или</div>
+          </>
+        )}
 
         <div className="secondary-payment">
-          <button
-            className="btn btn-secondary btn-small"
-            onClick={handleGenerateQR}
-            disabled={loading}
-          >
-            {showQR ? 'Обновить QR-код' : 'Показать QR-код для сканирования'}
-          </button>
+          {!(showQR && !paymentLink?.link) && (
+            <button
+              className="btn btn-secondary btn-small"
+              onClick={handleGenerateQR}
+              disabled={loading}
+            >
+              {showQR ? 'Обновить QR-код' : 'Показать QR-код для сканирования'}
+            </button>
+          )}
 
           {qrData && showQR && (
             <div className="qr-display">
               <div className="qr-content">
-                <QRCodeSVG
-                  value={qrData.url}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                />
+                {qrData.image_url ? (
+                  <img
+                    src={mediaUrl(qrData.image_url)}
+                    alt="QR-код для оплаты"
+                    className="qr-image"
+                  />
+                ) : (
+                  <QRCodeSVG
+                    value={qrData.url}
+                    size={200}
+                    level="H"
+                    includeMargin={true}
+                  />
+                )}
                 <p className="qr-instruction">
                   Отсканируйте камерой телефона
                 </p>

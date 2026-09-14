@@ -1,6 +1,9 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
+// Абсолютный адрес картинки, которую backend отдаёт по относительному пути
+export const mediaUrl = (path) => (path ? `${API_URL}${path}` : null);
 
 const api = axios.create({
   baseURL: API_URL,
@@ -70,8 +73,22 @@ export const getPaymentLink = async () => {
   return response.data;
 };
 
-export const updateDynamicRedirect = async (data) => {
-  const response = await api.post('/api/admin/dynamic-redirect', data);
+// multipart, потому что вместе со ссылкой может прилететь картинка QR-кода.
+// Content-Type намеренно не задаём: браузер сам проставит boundary.
+export const updateDynamicRedirect = async ({ name, target_url, valid_from, valid_until, qr_image }) => {
+  const formData = new FormData();
+  formData.append('name', name || '');
+  formData.append('target_url', target_url || '');
+  formData.append('valid_from', valid_from);
+  formData.append('valid_until', valid_until);
+  if (qr_image) {
+    formData.append('qr_image', qr_image);
+  }
+
+  const token = localStorage.getItem('admin_token');
+  const response = await axios.post(`${API_URL}/api/admin/dynamic-redirect`, formData, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {}
+  });
   return response.data;
 };
 

@@ -365,3 +365,14 @@
 .warning-content strong {
   font-weight: 600;
 }
+
+/* Картинка QR-кода, загруженная админом, вместо сгенерированного из ссылки */
+.qr-image {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: #fff;
+}

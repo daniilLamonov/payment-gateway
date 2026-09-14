@@ -6,9 +6,26 @@ import {
     updateWorkingHours,
     getAllWorkingHours,
     toggleRedirectStatus,
-    logout, deleteRedirect
+    logout, deleteRedirect, mediaUrl
 } from '../../api';
 import './AdminPanel.css';
+
+const MAX_QR_SIZE = 2 * 1024 * 1024;
+
+// FastAPI отдаёт detail строкой (HTTPException) либо массивом объектов (ошибка валидации, 422).
+// Массив нельзя рендерить как React-ребёнка — вытаскиваем из него текст.
+const extractErrorMessage = (err, fallback) => {
+  const detail = err?.response?.data?.detail;
+
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const messages = detail.map((item) => item?.msg).filter(Boolean);
+    return messages.length ? messages.join('; ') : fallback;
+  }
+  if (detail && typeof detail === 'object') return detail.msg || fallback;
+
+  return fallback;
+};
 
 const AdminPanel = () => {
   const [redirects, setRedirects] = useState([]);
@@ -18,6 +35,9 @@ const AdminPanel = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
   const [activeTab, setActiveTab] = useState('current');
+
+  const [qrFile, setQrFile] = useState(null);
+  const [qrPreview, setQrPreview] = useState(null);
 
   const [newRedirect, setNewRedirect] = useState({
     name: '',
@@ -93,8 +113,7 @@ const AdminPanel = () => {
       setSuccess('Ссылка успешно удалена');
       await fetchData();
     } catch (err) {
-       const msg = err.response?.data?.detail || 'Ошибка при удалении';
-       setError(typeof msg === 'string' ? msg : 'Ошибка удаления');
+      setError(extractErrorMessage(err, 'Ошибка при удалении'));
     } finally {
       setLoading(false);
     }
@@ -113,7 +132,7 @@ const AdminPanel = () => {
         await fetchData();
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.detail || 'Ошибка при изменении статуса ссылки';
+      const errorMessage = extractErrorMessage(err, 'Ошибка при изменении статуса ссылки');
       setError(errorMessage);
 
       if (errorMessage.includes('истёк') || errorMessage.includes('не действительна')) {
@@ -124,9 +143,54 @@ const AdminPanel = () => {
     }
   };
 
+  const handleQrFileChange = (e) => {
+    const file = e.target.files?.[0] || null;
+
+    if (qrPreview) URL.revokeObjectURL(qrPreview);
+
+    if (!file) {
+      setQrFile(null);
+      setQrPreview(null);
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setError('Файл должен быть изображением (PNG, JPEG, WebP или GIF)');
+      e.target.value = '';
+      setQrFile(null);
+      setQrPreview(null);
+      return;
+    }
+
+    if (file.size > MAX_QR_SIZE) {
+      setError(`Файл слишком большой (${Math.round(file.size / 1024)} КБ). Максимум 2048 КБ`);
+      e.target.value = '';
+      setQrFile(null);
+      setQrPreview(null);
+      return;
+    }
+
+    setError(null);
+    setQrFile(file);
+    setQrPreview(URL.createObjectURL(file));
+  };
+
+  const clearQrFile = () => {
+    if (qrPreview) URL.revokeObjectURL(qrPreview);
+    setQrFile(null);
+    setQrPreview(null);
+  };
+
   const handleAddRedirect = async () => {
-    if (!newRedirect.target_url.trim()) {
-      setError('Введите ссылку на оплату');
+    const url = newRedirect.target_url.trim();
+
+    if (!url && !qrFile) {
+      setError('Укажите ссылку на оплату или загрузите изображение QR-кода');
+      return;
+    }
+
+    if (url && !/^https?:\/\/\S+$/i.test(url)) {
+      setError('Ссылка должна начинаться с http:// или https:// — например https://qr.nspk.ru/AS100...');
       return;
     }
 
@@ -137,9 +201,10 @@ const AdminPanel = () => {
     try {
       const data = await updateDynamicRedirect({
         name: newRedirect.name,
-        target_url: newRedirect.target_url,
+        target_url: url,
         valid_from: new Date(newRedirect.valid_from).toISOString(),
-        valid_until: new Date(newRedirect.valid_until).toISOString()
+        valid_until: new Date(newRedirect.valid_until).toISOString(),
+        qr_image: qrFile
       });
 
       if (data.success) {
@@ -150,10 +215,11 @@ const AdminPanel = () => {
           valid_from: new Date().toISOString().slice(0, 16),
           valid_until: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
         });
+        clearQrFile();
         fetchData();
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при добавлении ссылки');
+      setError(extractErrorMessage(err, 'Ошибка при добавлении ссылки'));
     } finally {
       setLoading(false);
     }
@@ -177,7 +243,7 @@ const AdminPanel = () => {
         fetchData();
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Ошибка при обновлении рабочего времени');
+      setError(extractErrorMessage(err, 'Ошибка при обновлении рабочего времени'));
     } finally {
       setLoading(false);
     }
@@ -279,9 +345,26 @@ const AdminPanel = () => {
                   <div className="info-row">
                     <span className="info-label">Редиректит на (СБП):</span>
                     <div className="info-value">
-                      <code className="url-code small">{currentRedirect.target_url}</code>
+                      {currentRedirect.target_url ? (
+                        <code className="url-code small">{currentRedirect.target_url}</code>
+                      ) : (
+                        <span className="muted">Ссылки нет — оплата только по QR-коду</span>
+                      )}
                     </div>
                   </div>
+
+                  {currentRedirect.qr_image_url && (
+                    <div className="info-row">
+                      <span className="info-label">QR-код (картинка):</span>
+                      <div className="info-value">
+                        <img
+                          src={mediaUrl(currentRedirect.qr_image_url)}
+                          alt="QR-код для оплаты"
+                          className="qr-thumb"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="info-row">
                     <span className="info-label">Действительна:</span>
@@ -320,6 +403,32 @@ const AdminPanel = () => {
                     onChange={(e) => setNewRedirect({ ...newRedirect, target_url: e.target.value })}
                     className="form-input"
                   />
+                  <p className="field-hint">
+                    Можно оставить пустым, если вместо ссылки загружаете картинку QR-кода.
+                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label>Картинка QR-кода (необязательно)</label>
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    onChange={handleQrFileChange}
+                    className="form-input"
+                  />
+                  <p className="field-hint">
+                    PNG, JPEG, WebP или GIF до 2 МБ. Если картинка загружена, плательщик увидит именно её
+                    вместо QR-кода, сгенерированного из ссылки.
+                  </p>
+
+                  {qrPreview && (
+                    <div className="qr-preview">
+                      <img src={qrPreview} alt="Предпросмотр QR-кода" className="qr-thumb" />
+                      <button type="button" className="btn-delete" onClick={clearQrFile}>
+                        Убрать картинку
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-row">
@@ -391,8 +500,20 @@ const AdminPanel = () => {
                         <p className="redirect-name"><strong>Название</strong>: {redirect.name}</p>
                         <p className="redirect-url">
                           <strong>Ссылка:</strong><br />
-                          <code>{redirect.target_url}</code>
+                          {redirect.target_url
+                            ? <code>{redirect.target_url}</code>
+                            : <span className="muted">только QR-код</span>}
                         </p>
+                        {redirect.qr_image_url && (
+                          <p className="redirect-qr">
+                            <strong>QR-код:</strong><br />
+                            <img
+                              src={mediaUrl(redirect.qr_image_url)}
+                              alt="QR-код для оплаты"
+                              className="qr-thumb"
+                            />
+                          </p>
+                        )}
                         <p className="redirect-dates">
                           <strong>Действует:</strong> {formatDate(redirect.valid_from)} — {formatDate(redirect.valid_until)}
                         </p>
